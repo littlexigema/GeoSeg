@@ -76,6 +76,12 @@ class UnetFormerLoss(nn.Module):
         self.aux_loss = SoftCrossEntropyLoss(smooth_factor=0.05, ignore_index=ignore_index)
 
     def forward(self, logits, labels):
+        labels=labels.long()
+        # print(f'logits.shape:{logits.shape}')
+        # print(f'labels.shape:{labels.shape}')
+        
+        # print(f'len(logits):{len(logits)}')
+        # raise RuntimeError('None')
         if self.training and len(logits) == 2:
             logit_main, logit_aux = logits
             loss = self.main_loss(logit_main, labels) + 0.4 * self.aux_loss(logit_aux, labels)

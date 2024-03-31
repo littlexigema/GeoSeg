@@ -7,7 +7,7 @@ class Evaluator(object):
         self.confusion_matrix = np.zeros((self.num_class,) * 2)
         self.eps = 1e-8
 
-    def get_tp_fp_tn_fn(self):
+    def get_tp_fp_tn_fn(self):#矩阵运算，对于两分类问题，返回的tpfptnfn均为一个长度为2的向量，第一个值为第一个类别的confusion_matrix的内容，
         tp = np.diag(self.confusion_matrix)
         fp = self.confusion_matrix.sum(axis=0) - np.diag(self.confusion_matrix)
         fn = self.confusion_matrix.sum(axis=1) - np.diag(self.confusion_matrix)
@@ -57,7 +57,8 @@ class Evaluator(object):
         return FWIoU
 
     def _generate_matrix(self, gt_image, pre_image):
-        mask = (gt_image >= 0) & (gt_image < self.num_class)
+        # mask = (gt_image >= 0) & (gt_image < self.num_class)
+        mask=np.ones_like(gt_image).astype('bool')#在我们的任务中均满足以上要求
         label = self.num_class * gt_image[mask].astype('int') + pre_image[mask]
         count = np.bincount(label, minlength=self.num_class ** 2)
         confusion_matrix = count.reshape(self.num_class, self.num_class)

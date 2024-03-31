@@ -47,19 +47,26 @@ class Supervision_Train(pl.LightningModule):
         return seg_pre
 
     def training_step(self, batch, batch_idx):
-        img, mask = batch['img'], batch['gt_semantic_seg']
+        # img, mask = batch['img'], batch['gt_semantic_seg']
+        img, mask, roi = batch
 
         prediction = self.net(img)
+        # z=torch.logical_or(mask.detach(),roi.detach())#取并集
+        # prediction=prediction*z
         loss = self.loss(prediction, mask)
-
+        # print(f'prediction.shape:{prediction.shape}')
         if self.config.use_aux_loss:
             pre_mask = nn.Softmax(dim=1)(prediction[0])
         else:
             pre_mask = nn.Softmax(dim=1)(prediction)
 
         pre_mask = pre_mask.argmax(dim=1)
+        # print(f'pre_mask.shape:{pre_mask.shape}')
+        # print(f'mask.shape:{mask.shape}')
+        
         for i in range(mask.shape[0]):
-            self.metrics_train.add_batch(mask[i].cpu().numpy(), pre_mask[i].cpu().numpy())
+            # print(f'i:{i}')
+            self.metrics_train.add_batch(mask[i][0].cpu().numpy(), pre_mask[i].cpu().numpy())
 
         return {"loss": loss}
 
@@ -84,27 +91,32 @@ class Supervision_Train(pl.LightningModule):
             F1 = np.nanmean(self.metrics_train.F1())
 
         OA = np.nanmean(self.metrics_train.OA())
-        iou_per_class = self.metrics_train.Intersection_over_Union()
+        # iou_per_class = self.metrics_train.Intersection_over_Union()
         eval_value = {'mIoU': mIoU,
                       'F1': F1,
                       'OA': OA}
         print('train:', eval_value)
 
-        iou_value = {}
-        for class_name, iou in zip(self.config.classes, iou_per_class):
-            iou_value[class_name] = iou
-        print(iou_value)
+        # iou_value = {}
+        # for class_name, iou in zip(self.config.classes, iou_per_class):
+            # iou_value[class_name] = iou
+        # print(iou_value)
         self.metrics_train.reset()
         log_dict = {'train_mIoU': mIoU, 'train_F1': F1, 'train_OA': OA}
         self.log_dict(log_dict, prog_bar=True)
 
     def validation_step(self, batch, batch_idx):
-        img, mask = batch['img'], batch['gt_semantic_seg']
+        # img, mask = batch['img'], batch['gt_semantic_seg']
+        img, mask, roi = batch
         prediction = self.forward(img)
+        # print(f'prediction.shape:{prediction.shape}')
         pre_mask = nn.Softmax(dim=1)(prediction)
+        # print(f'pre_mask.shape:{pre_mask.shape}')
+        # print(f'mask.shape:{mask.shape}')
         pre_mask = pre_mask.argmax(dim=1)
+        # print(f'pre_mask.shape:{pre_mask.shape}')
         for i in range(mask.shape[0]):
-            self.metrics_val.add_batch(mask[i].cpu().numpy(), pre_mask[i].cpu().numpy())
+            self.metrics_val.add_batch(mask[i][0].cpu().numpy(), pre_mask[i].cpu().numpy())
 
         loss_val = self.loss(prediction, mask)
         return {"loss_val": loss_val}
@@ -130,16 +142,16 @@ class Supervision_Train(pl.LightningModule):
             F1 = np.nanmean(self.metrics_val.F1())
 
         OA = np.nanmean(self.metrics_val.OA())
-        iou_per_class = self.metrics_val.Intersection_over_Union()
+        # iou_per_class = self.metrics_val.Intersection_over_Union()
 
         eval_value = {'mIoU': mIoU,
                       'F1': F1,
                       'OA': OA}
         print('val:', eval_value)
-        iou_value = {}
-        for class_name, iou in zip(self.config.classes, iou_per_class):
-            iou_value[class_name] = iou
-        print(iou_value)
+        # iou_value = {}
+        # for class_name, iou in zip(self.config.classes, iou_per_class):
+            # iou_value[class_name] = iou
+        # print(iou_value)
 
         self.metrics_val.reset()
         log_dict = {'val_mIoU': mIoU, 'val_F1': F1, 'val_OA': OA}
@@ -165,6 +177,17 @@ def main():
     args = get_args()
     config = py2cfg(args.config_path)
     seed_everything(42)
+
+    # print(f'config.save_top_k:{config.save_top_k}')
+    # print(f'config.monitor:{config.monitor}')
+    # print(f'config.save_last:{config.save_last}')
+    # print(f'config.monitor_mode:{config.monitor_mode}')
+    # print(f'config.weights_path:{config.weights_path}')
+    # print(f'config.log_name:{config.log_name}')
+    # print(f'config.:{config.log_name}')
+    
+    
+    
 
     checkpoint_callback = ModelCheckpoint(save_top_k=config.save_top_k, monitor=config.monitor,
                                           save_last=config.save_last, mode=config.monitor_mode,
